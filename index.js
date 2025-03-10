@@ -22,8 +22,29 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    const dataBase = client.db("mess_management");
+    const userColl = dataBase.collection("users");
+    const memberColl = dataBase.collection("member");
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    // member add
+
+    app.post("/memberAdd", async (req, res) => {
+      const member = req.body;
+      console.log(member);
+      const result = await memberColl.insertOne(member);
+      res.send(result);
+    });
+
+    // member show / get
+
+    app.get("/allMember", async (req, res) => {
+      const allMember = memberColl.find();
+      const result = await allMember.toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
