@@ -25,6 +25,7 @@ async function run() {
     const dataBase = client.db("mess_management");
     const userColl = dataBase.collection("users");
     const memberColl = dataBase.collection("member");
+    const mealColl = dataBase.collection("meal");
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
@@ -42,6 +43,23 @@ async function run() {
     app.get("/allMember", async (req, res) => {
       const allMember = memberColl.find();
       const result = await allMember.toArray();
+      res.send(result);
+    });
+
+    // add Meal
+
+    app.post("/addMeal", async (req, res) => {
+      const addMeal = req.body;
+      console.log(addMeal);
+      const result = await mealColl.insertMany(addMeal);
+      res.send(result);
+    });
+
+    // meal show
+
+    app.get("/meals", async (req, res) => {
+      const tmeal = mealColl.find();
+      const result = await tmeal.toArray();
       res.send(result);
     });
 
