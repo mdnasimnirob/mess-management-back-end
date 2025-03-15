@@ -58,9 +58,32 @@ async function run() {
     // meal show
 
     app.get("/meals", async (req, res) => {
-      const tmeal = mealColl.find();
-      const result = await tmeal.toArray();
-      res.send(result);
+      const { date } = req.query;
+
+      // if (!date) {
+      //   return res.status(400).json({ message: "Meal date is required" });
+      // }
+
+      try {
+        const groupedMeals = await mealColl
+          .aggregate([
+            {
+              $group: {
+                _id: "$mealDate", // Group meals by mealDate
+                totalMeals: { $sum: 1 }, // Count number of meals per date
+                meals: { $push: "$$ROOT" }, // Store all meals for that date
+              },
+            },
+            {
+              $sort: { _id: 1 }, // Sort by date (optional)
+            },
+          ])
+          .toArray();
+
+        res.send(groupedMeals);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching meals", error });
+      }
     });
 
     // Send a ping to confirm a successful connection
