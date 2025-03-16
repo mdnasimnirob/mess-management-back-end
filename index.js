@@ -8,7 +8,7 @@ require("dotenv").config();
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.PASS_DB}@cluster0.wxytm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -51,14 +51,39 @@ async function run() {
     app.post("/addMeal", async (req, res) => {
       const addMeal = req.body;
       console.log(addMeal);
-      const result = await mealColl.insertMany(addMeal);
-      res.send(result);
+      // Ensure each meal entry has a unique ObjectId
+      const meals = addMeal.map((meal) => ({
+        ...meal,
+
+        mealDate: new Date().toISOString().split("T")[0], // Ensure correct meal date
+      }));
+      for (const meal of meals) {
+        // Check if the meal already exists for this member on the same date
+        const existingMeal = await mealColl.findOne({
+          member_id: meal.member_id,
+          mealDate: meal.mealDate,
+          name: meal.name, // Optional: check for duplicate meal name
+        });
+
+        if (existingMeal) {
+          // If the meal already exists, increment the meal count
+          await mealColl.updateOne(
+            { _id: existingMeal._id },
+            { $inc: { count: 1 } } // Increment the meal count
+          );
+        } else {
+          // If no existing meal found, insert a new meal with count = 1
+          meal.count = 1; // Initialize count to 1 for a new meal
+          await mealColl.insertOne(meal);
+        }
+      }
+      res.send({ message: "Meals added successfully" });
     });
 
     // meal show
 
     app.get("/meals", async (req, res) => {
-      const { date } = req.query;
+      // const { date } = req.query;
 
       // if (!date) {
       //   return res.status(400).json({ message: "Meal date is required" });
