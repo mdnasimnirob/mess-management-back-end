@@ -46,6 +46,49 @@ async function run() {
       res.send(result);
     });
 
+    // member edit
+
+    app.put("/memberUpdate/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const updatedMember = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            name: updatedMember.name,
+            address: updatedMember.address,
+          },
+        };
+
+        const result = await memberColl.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Member not found" });
+        }
+
+        if (result.modifiedCount === 0) {
+          return res.json({ success: false, message: "No changes made" });
+        }
+
+        res.json({ success: true, message: "Member updated successfully" });
+      } catch (error) {
+        console.error("Error updating member:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+    });
+
+    // delete member
+
+    app.delete("/memberDelete/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const deleteResult = await memberColl.deleteOne(query);
+      res.send(deleteResult);
+    });
+
     // add Meal
 
     app.post("/addMeal", async (req, res) => {
