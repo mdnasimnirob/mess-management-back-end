@@ -92,46 +92,201 @@ async function run() {
     // add Meal
 
     app.post("/addMeal", async (req, res) => {
-      const addMeal = req.body;
-      console.log(addMeal);
-      // Ensure each meal entry has a unique ObjectId
-      const meals = addMeal.map((meal) => ({
-        ...meal,
+      const meals = req.body; // Array of meal objects
+      const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
-        mealDate: new Date().toISOString().split("T")[0], // Ensure correct meal date
-      }));
-      for (const meal of meals) {
-        // Check if the meal already exists for this member on the same date
-        const existingMeal = await mealColl.findOne({
-          member_id: meal.member_id,
-          mealDate: meal.mealDate,
-          name: meal.name, // Optional: check for duplicate meal name
+      try {
+        // Check if any member already has a meal for today
+        const alreadyExists = await mealColl
+          .find({
+            member_id: { $in: meals.map((m) => m.member_id) }, // Check for all members
+            mealDate: today, // Ensure it's today's date
+          })
+          .toArray();
+
+        // Filter out members who already have a meal for today
+        const newMeals = meals.filter(
+          (m) =>
+            !alreadyExists.some(
+              (existingMeal) => existingMeal.member_id === m.member_id
+            )
+        );
+
+        if (newMeals.length === 0) {
+          return res
+            .status(400)
+            .json({ message: "Meal already added for today!" });
+        }
+
+        // Prepare the new meals to be inserted
+        const mealsToInsert = newMeals.map((meal) => {
+          return {
+            ...meal,
+            mealDate: today, // Add today's date
+            memberName: meal.memberName, // Add member name if not already present
+            memberAddress: meal.memberAddress, // Add member address if not already present
+            guestMeals: meal.guestMeals || 0, // Ensure guest meals count is present
+          };
         });
 
-        if (existingMeal) {
-          // If the meal already exists, increment the meal count
-          await mealColl.updateOne(
-            { _id: existingMeal._id },
-            { $inc: { count: 1 } } // Increment the meal count
-          );
-        } else {
-          // If no existing meal found, insert a new meal with count = 1
-          meal.count = 1; // Initialize count to 1 for a new meal
-          await mealColl.insertOne(meal);
-        }
+        // Insert new meals into the database
+        await mealColl.insertMany(mealsToInsert);
+
+        res
+          .status(201)
+          .json({
+            message: "Meals added successfully!",
+            addedMeals: mealsToInsert,
+          });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
       }
-      res.send({ message: "Meals added successfully" });
     });
+
+    // app.post("/addMeal", async (req, res) => {
+    //   const meals = req.body; // Array of meal objects
+    //   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+    //   try {
+    //     const alreadyExists = await mealColl
+    //       .find({
+    //         member_id: { $in: meals.map((m) => m.member_id) }, // Check for all members
+    //         mealDate: today, // Ensure it's today's date
+    //       })
+    //       .toArray();
+
+    //     // Filter out members who already have a meal today
+    //     const newMeals = meals.filter(
+    //       (m) =>
+    //         !alreadyExists.some(
+    //           (existingMeal) => existingMeal.member_id === m.member_id
+    //         )
+    //     );
+
+    //     if (newMeals.length === 0) {
+    //       return res
+    //         .status(400)
+    //         .json({ message: "Meal already added for today!" });
+    //     }
+
+    //     // Insert only new meals
+    //     await mealColl.insertMany(newMeals);
+    //     res
+    //       .status(201)
+    //       .json({ message: "Meals added successfully!", addedMeals: newMeals });
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({ message: "Internal Server Error" });
+    //   }
+    // });
+
+    // app.post("/addMeal", async (req, res) => {
+    //   const addMeal = req.body;
+    //   console.log(addMeal);
+
+    //   const meals = addMeal.map((meal) => ({
+    //     ...meal,
+    //     mealDate: new Date().toISOString().split("T")[0], // Ensure correct meal date
+    //   }));
+
+    //   for (const meal of meals) {
+    //     // Check if a total meal already exists for this member on the same date
+    //     const existingTotalMeal = await mealColl.findOne({
+    //       member_id: meal.member_id,
+    //       mealDate: meal.mealDate,
+    //       type: "total", // Ensure we're checking only total meals
+    //     });
+
+    //     if (meal.type === "guest") {
+    //       // If adding a guest meal, ensure that a total meal exists first
+    //       if (!existingTotalMeal) {
+    //         return res
+    //           .status(400)
+    //           .send({
+    //             error: "You must add a total meal before adding a guest meal.",
+    //           });
+    //       }
+    //     }
+
+    //     // Check if the same meal type (total/guest) already exists for this member on the same date
+    //     const existingMeal = await mealColl.findOne({
+    //       member_id: meal.member_id,
+    //       mealDate: meal.mealDate,
+    //       type: meal.type, // Ensure we differentiate between total and guest
+    //     });
+
+    //     if (meal.type === "total") {
+    //       // First time adding a total meal (always starts with count = 1)
+    //       if (!existingMeal) {
+    //         meal.count = 1; // Initialize count to 1
+    //         await mealColl.insertOne(meal);
+    //       } else {
+    //         // If the total meal exists, just increase the count
+    //         await mealColl.updateOne(
+    //           { _id: existingMeal._id },
+    //           { $inc: { count: 1 } } // Increment the meal count
+    //         );
+    //       }
+    //     } else if (meal.type === "guest") {
+    //       // If it's the first guest meal, insert without count increment
+    //       if (!existingMeal) {
+    //         meal.count = 0; // Do not increment first guest meal
+    //         await mealColl.insertOne(meal);
+    //       } else {
+    //         // If guest meal already exists, then increment count
+    //         await mealColl.updateOne(
+    //           { _id: existingMeal._id },
+    //           { $inc: { count: 1 } } // Increment guest meal count
+    //         );
+    //       }
+    //     }
+    //   }
+
+    //   res.send({ message: "Meals added successfully" });
+    // });
+
+    // app.post("/addMeal", async (req, res) => {
+    //   const addMeal = req.body;
+    //   console.log(addMeal);
+    //   // Ensure each meal entry has a unique ObjectId
+    //   const meals = addMeal.map((meal) => ({
+    //     ...meal,
+
+    //     mealDate: new Date().toISOString().split("T")[0], // Ensure correct meal date
+    //   }));
+    //   for (const meal of meals) {
+    //     // Check if the meal already exists for this member on the same date
+    //     const existingMeal = await mealColl.findOne({
+    //       member_id: meal.member_id,
+    //       mealDate: meal.mealDate,
+    //       name: meal.name, // Optional: check for duplicate meal name
+    //     });
+
+    //     if (existingMeal) {
+    //       // If the meal already exists, increment the meal count
+    //       await mealColl.updateOne(
+    //         { _id: existingMeal._id },
+    //         { $inc: { count: 1 } } // Increment the meal count
+    //       );
+    //     } else {
+    //       // If no existing meal found, insert a new meal with count = 1
+    //       meal.count = 1; // Initialize count to 1 for a new meal
+    //       await mealColl.insertOne(meal);
+    //     }
+    //   }
+    //   res.send({ message: "Meals added successfully" });
+    // });
 
     // meal show
 
+    // const { date } = req.query;
+
+    // if (!date) {
+    //   return res.status(400).json({ message: "Meal date is required" });
+    // }
+
     app.get("/meals", async (req, res) => {
-      // const { date } = req.query;
-
-      // if (!date) {
-      //   return res.status(400).json({ message: "Meal date is required" });
-      // }
-
       try {
         const groupedMeals = await mealColl
           .aggregate([
