@@ -132,12 +132,10 @@ async function run() {
         // Insert new meals into the database
         await mealColl.insertMany(mealsToInsert);
 
-        res
-          .status(201)
-          .json({
-            message: "Meals added successfully!",
-            addedMeals: mealsToInsert,
-          });
+        res.status(201).json({
+          message: "Meals added successfully!",
+          addedMeals: mealsToInsert,
+        });
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -306,6 +304,171 @@ async function run() {
         res.send(groupedMeals);
       } catch (error) {
         res.status(500).send({ message: "Error fetching meals", error });
+      }
+    });
+
+    // today Meals
+
+    app.get("/meals/today", async (req, res) => {
+      try {
+        const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+        const meals = await mealColl.find({ mealDate: today }).toArray();
+
+        res.status(200).json({ message: "Today's meals", meals });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // weekly Meals
+
+    app.get("/meals/weekly", async (req, res) => {
+      try {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7); // Get date 7 days ago
+
+        const meals = await mealColl
+          .find({
+            mealDate: {
+              $gte: lastWeek.toISOString().split("T")[0], // Start of the week
+              $lte: today.toISOString().split("T")[0], // Today
+            },
+          })
+          .toArray();
+
+        res.status(200).json({ message: "Weekly meals", meals });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // monthly Meals
+
+    app.get("/meals/monthly", async (req, res) => {
+      try {
+        const today = new Date();
+        const firstDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1
+        );
+        const lastDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          0
+        );
+
+        const meals = await mealColl
+          .find({
+            mealDate: {
+              $gte: firstDayOfMonth.toISOString().split("T")[0], // Start of month
+              $lte: lastDayOfMonth.toISOString().split("T")[0], // End of month
+            },
+          })
+          .toArray();
+
+        res.status(200).json({ message: "Monthly meals", meals });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // today Guest Meals
+
+    app.get("/guest-meals/today", async (req, res) => {
+      try {
+        const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+
+        const guestMeals = await mealColl
+          .aggregate([
+            { $match: { mealDate: today } }, // Filter for today's date
+            { $group: { _id: null, totalGuestMeals: { $sum: "$guestMeals" } } }, // Sum guest meals
+          ])
+          .toArray();
+
+        res.status(200).json({
+          message: "Today's Guest Meals",
+          totalGuestMeals: guestMeals[0]?.totalGuestMeals || 0,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // weekly Guest Meals
+
+    app.get("/guest-meals/weekly", async (req, res) => {
+      try {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7); // Get date 7 days ago
+
+        const guestMeals = await mealColl
+          .aggregate([
+            {
+              $match: {
+                mealDate: {
+                  $gte: lastWeek.toISOString().split("T")[0],
+                  $lte: today.toISOString().split("T")[0],
+                },
+              },
+            }, // Filter for last 7 days
+            { $group: { _id: null, totalGuestMeals: { $sum: "$guestMeals" } } }, // Sum guest meals
+          ])
+          .toArray();
+
+        res.status(200).json({
+          message: "Weekly Guest Meals",
+          totalGuestMeals: guestMeals[0]?.totalGuestMeals || 0,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // monthly Guest Meals
+
+    app.get("/guest-meals/monthly", async (req, res) => {
+      try {
+        const today = new Date();
+        const firstDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1
+        );
+        const lastDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          0
+        );
+
+        const guestMeals = await mealColl
+          .aggregate([
+            {
+              $match: {
+                mealDate: {
+                  $gte: firstDayOfMonth.toISOString().split("T")[0],
+                  $lte: lastDayOfMonth.toISOString().split("T")[0],
+                },
+              },
+            }, // Filter for current month
+            { $group: { _id: null, totalGuestMeals: { $sum: "$guestMeals" } } }, // Sum guest meals
+          ])
+          .toArray();
+
+        res.status(200).json({
+          message: "Monthly Guest Meals",
+          totalGuestMeals: guestMeals[0]?.totalGuestMeals || 0,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
       }
     });
 
