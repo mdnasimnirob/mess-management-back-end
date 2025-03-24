@@ -4,15 +4,15 @@ const app = express();
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
-app.use(
-  cors({
-    origin: "https://mess-management-17ffa.web.app", // Your frontend URL
-    methods: ["GET", "POST"],
-    credentials: true, // Include cookies if needed
-  })
-);
+// app.use(
+//   cors({
+//     origin: "https://mess-management-17ffa.web.app", // Your frontend URL
+//     methods: ["GET", "POST"],
+//     credentials: true, // Include cookies if needed
+//   })
+// );
 
-// app.use(cors({ origin: "https://mess-management-17ffa.web.app" }));
+app.use(cors({ origin: "https://mess-management-17ffa.web.app" }));
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -36,15 +36,15 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    app.use((req, res, next) => {
-      res.header("Access-Control-Allow-Origin", "*"); // Replace '*' with your frontend URL for security
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
-      );
-      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-      next();
-    });
+    // app.use((req, res, next) => {
+    //   res.header("Access-Control-Allow-Origin", "*"); // Replace '*' with your frontend URL for security
+    //   res.header(
+    //     "Access-Control-Allow-Methods",
+    //     "GET, POST, PUT, DELETE, OPTIONS"
+    //   );
+    //   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    //   next();
+    // });
 
     // member add
 
