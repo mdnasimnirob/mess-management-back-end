@@ -4,15 +4,25 @@ const app = express();
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
-// app.use(
-//   cors({
-//     origin: "https://mess-management-17ffa.web.app", // Your frontend URL
-//     methods: ["GET", "POST"],
-//     credentials: true, // Include cookies if needed
-//   })
-// );
+const allowedOrigins = [
+  "https://mess-management-17ffa.web.app",
+  "http://localhost:5173",
+];
 
-app.use(cors({ origin: "https://mess-management-17ffa.web.app" }));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // If you are using cookies or authentication
+  })
+);
+
+// app.use(cors({ origin: "https://mess-management-17ffa.web.app" }));
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -33,18 +43,9 @@ async function run() {
     const userColl = dataBase.collection("users");
     const memberColl = dataBase.collection("member");
     const mealColl = dataBase.collection("meal");
+    const mealRate = dataBase.collection("mealRate");
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
-    // app.use((req, res, next) => {
-    //   res.header("Access-Control-Allow-Origin", "*"); // Replace '*' with your frontend URL for security
-    //   res.header(
-    //     "Access-Control-Allow-Methods",
-    //     "GET, POST, PUT, DELETE, OPTIONS"
-    //   );
-    //   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    //   next();
-    // });
 
     // member add
 
@@ -344,6 +345,34 @@ async function run() {
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // Set or Update Meal Rate
+    app.post("/mealRate", async (req, res) => {
+      const rate = req.body;
+      try {
+        const result = await mealRate.updateOne(
+          { type: "mealRate" },
+          { $set: { value: rate } },
+          { upsert: true }
+        );
+        res.status(200).json({ message: "Meal rate set successfully", result });
+      } catch (error) {
+        console.error("Error setting meal rate:", error);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
+
+    // Get Meal Rate
+    app.get("/mealRate", async (req, res) => {
+      try {
+        const filter = await mealRate.findOne({ type: "mealRate" });
+
+        res.status(200).json({ rate: filter?.value || 0 });
+      } catch (error) {
+        console.error("Error fetching meal rate:", error);
+        res.status(500).json({ message: "Server error" });
       }
     });
 
