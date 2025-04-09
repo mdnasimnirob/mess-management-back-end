@@ -183,7 +183,77 @@ async function run() {
       }
     });
 
-    // today Meals
+    // monthly member meal
+
+    app.get("/meals/monthly/by-member", async (req, res) => {
+      try {
+        const groupedMeals = await mealColl
+          .aggregate([
+            {
+              $addFields: {
+                mealDateParsed: { $toDate: "$mealDate" },
+              },
+            },
+            {
+              $addFields: {
+                year: { $year: "$mealDateParsed" },
+                month: { $month: "$mealDateParsed" },
+              },
+            },
+            {
+              $group: {
+                _id: {
+                  memberId: "$member_id",
+                  year: "$year",
+                  month: "$month",
+                },
+                totalMeals: { $sum: 1 },
+                guestMeals: { $sum: "$guestMeals" },
+                dates: { $addToSet: "$mealDateParsed" }, // Collect unique meal dates
+              },
+            },
+            {
+              $addFields: {
+                memberObjectId: { $toObjectId: "$_id.memberId" },
+              },
+            },
+            {
+              $lookup: {
+                from: "member",
+                localField: "memberObjectId",
+                foreignField: "_id",
+                as: "memberInfo",
+              },
+            },
+            { $unwind: "$memberInfo" },
+            {
+              $project: {
+                _id: 0,
+                memberId: "$_id.memberId",
+                memberName: "$memberInfo.name",
+                year: "$_id.year",
+                month: "$_id.month",
+                totalMeals: 1,
+                guestMeals: 1,
+                mealDates: "$dates", // Include dates in result
+              },
+            },
+            {
+              $sort: {
+                year: -1,
+                month: -1,
+                memberName: 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(groupedMeals);
+      } catch (error) {
+        console.error("Error fetching monthly member meals:", error);
+        res.status(500).send({ message: "Error fetching meals", error });
+      }
+    });
 
     app.get("/meals/today", async (req, res) => {
       try {
