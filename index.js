@@ -446,6 +446,26 @@ async function run() {
       }
     });
 
+    // money deposit
+    app.post("/addDeposit", async (req, res) => {
+      const { memberId, amount, depositDate } = req.body;
+
+      const result = await memberColl.updateOne(
+        { _id: new ObjectId(memberId) },
+        {
+          $inc: { deposit: amount },
+          $push: {
+            depositHistory: {
+              amount,
+              depositDate: new Date(depositDate), // Ensure it's a proper Date
+            },
+          },
+        }
+      );
+
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
