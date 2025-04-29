@@ -466,6 +466,50 @@ async function run() {
       res.send(result);
     });
 
+    // remaining blance
+    // app.get("/member/remaining-balance/:memberId", async (req, res) => {
+    //   const { memberId } = req.params;
+
+    //   try {
+    //     const rateData = await mealRate.findOne({ type: "mealRate" });
+    //     const mealRateValue = rateData?.value || 0;
+
+    //     const meals = await mealColl
+    //       .aggregate([
+    //         { $match: { member_id: new ObjectId(memberId) } },
+    //         {
+    //           $group: {
+    //             _id: "$member_id",
+    //             totalMeals: { $sum: 1 },
+    //             guestMeals: { $sum: "$guestMeals" },
+    //           },
+    //         },
+    //       ])
+    //       .toArray();
+
+    //     const memberMeal = meals[0] || { totalMeals: 0, guestMeals: 0 };
+    //     const totalCost =
+    //       (memberMeal.totalMeals + memberMeal.guestMeals) * mealRateValue;
+
+    //     const member = await memberColl.findOne({
+    //       _id: new ObjectId(memberId),
+    //     });
+    //     const depositBalance = member?.deposit || 0;
+
+    //     const remainingBalance = depositBalance - totalCost;
+
+    //     res.send({
+    //       memberId,
+    //       deposit: depositBalance,
+    //       totalCost,
+    //       remainingBalance,
+    //     });
+    //   } catch (error) {
+    //     console.error("Error calculating remaining balance:", error);
+    //     res.status(500).json({ message: "Server error" });
+    //   }
+    // });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
